@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=, initial-scale=1.0">
+    <title>Chat Cifrado Cesar</title>
+</head>
+
+<body>
+    <h1>Bienvenido al Chat</h1>
+    <p>Usuario: {{ nombre_usuario }}</p>
+    <p>Tipo de Cifrado: {{ tipo_cifrado }}</p>
+
+    <div id="message-container">
+        <!-- Aquí se mostrarán los mensajes -->
+    </div>
+
+    <form id="message-form">
+        <input type="text" id="message-input" autocomplete="off" placeholder="Escribe tu mensaje...">
+        <button type="button" onclick="sendMessage()">Enviar</button>
+    </form>
+
+    <br>
+    <br>
+    <div id="cifrados-container">
+        <!-- Aquí se mostrarán los mensajes cifrados y descifrados -->
+    </div>
+
+    <form id="descifrar-form">
+        <input type="text" id="descifrar-input" autocomplete="off" placeholder="Tipo de descifrado...">
+        <button type="button" onclick="descifrarMensajes()">Descifrar</button>
+    </form>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.3/socket.io.js"></script>
+    <script>
+        //Establece la conexion con el servidor 
+        var socket = io.connect('http://' + document.domain + ':' + location.port);
+
+        // Función para enviar mensajes al servidor 
+        function sendMessage() {
+            var messageInput = document.getElementById('message-input');
+            var message = messageInput.value;
+
+            if (message.trim() !== '') {
+                socket.emit('message', { 'message': message });
+                messageInput.value = '';
+            }
+        }
+
+        // Función para descifrar mensajes
+        function descifrarMensajes() {
+            var descifrarInput = document.getElementById('descifrar-input');
+            var tipoDescifrado = parseInt(descifrarInput.value, 10);
+
+            // Limpiar el contenedor de mensajes cifrados antes de descifrar
+            var cifradosContainer = document.getElementById('cifrados-container');
+            cifradosContainer.innerHTML = '';
+
+            // Obtener los mensajes cifrados y descifrarlos
+            var mensajesCifrados = document.querySelectorAll('#message-container p');
+            mensajesCifrados.forEach(function (cifradoElement) {
+                var cifrado = cifradoElement.innerText.split(': ')[1];
+                var descifrado = descifrarCesar(cifrado, tipoDescifrado);
+                var descifradoElement = document.createElement('p');
+                descifradoElement.innerText = `Descifrado: ${descifrado}`;
+                cifradosContainer.appendChild(descifradoElement);
+            });
+
+            // Limpiar el campo de tipo de descifrado
+            descifrarInput.value = '';
+        }
+
+        // Función para descifrar con cifrado César
+        function descifrarCesar(cifrado, desplazamiento) {
+            var resultado = '';
+            for (var i = 0; i < cifrado.length; i++) {
+                var char = cifrado[i];
+                if (isAlpha(char)) {
+                    var inicio = isUpperCase(char) ? 'A'.charCodeAt(0) : 'a'.charCodeAt(0);
+                    // Modificamos la fórmula de descifrado para manejar espacios en blanco
+                    resultado += String.fromCharCode((char.charCodeAt(0) - inicio - desplazamiento + 26) % 26 + inicio);
+                } else {
+                    resultado += char;
+                }
+            }
+            return resultado;
+        }
+
+        // Función para verificar si un carácter es alfabético
+        function isAlpha(char) {
+            return /^[A-Za-z]+$/.test(char);
+        }
+
+        // Función para verificar si un carácter es mayúscula
+        function isUpperCase(char) {
+            return /^[A-Z]+$/.test(char);
+        }
+
+        // Escucha los mensajes cifrados y los muestra en el contenedor
+        socket.on('message', function (data) {
+            var messageContainer = document.getElementById('message-container');
+            var messageElement = document.createElement('p');
+            messageElement.innerText = data.message;
+            messageContainer.appendChild(messageElement);
+        });
+
+        // Escucha los mensajes descifrados y los muestra en el contenedor
+        socket.on('descifrado', function (data) {
+            var cifradosContainer = document.getElementById('cifrados-container');
+            var cifradoElement = document.createElement('p');
+            cifradoElement.innerText = data.message;
+            cifradosContainer.appendChild(cifradoElement);
+        });
+    </script>
+
+</body>
+
+</html>
